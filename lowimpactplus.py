@@ -1,120 +1,176 @@
 ###############################################################
-#   takes 2 source csv files and merges them
-#   while removing duplicates.
+#   Get RADIUS Authentication report From ISE for
+#   some length of time.
 #
-#   Requires output from low impact/monitor mode authentications
-#   and another file with dot1x authentications
+#   Will parse this information to identify which devices are still
+#   hitting a Low Impact/Monitor mode policy so they
+#   can be remediated.
 #
-#   The goal is to find endpoints that are hitting low impact
-#   and have not since authenticated with 802.1x
-#   Output is a list of MABbed devices that have not authenticated
-#   with 802.1x
+#   You can customize your low impact policies you want to search for
+#   by modifying the li[] list in get_low_impact()
+#
+#   Takes raw output from the RADIUS Authentications reports
+#   including all authentications.  No filters.
+#
 #   -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-==-=-=-=-=-
 #   Author: Garrett Munson
-#   7/11/2019
+#   8/19/2019
 ###############################################################
 
 import csv
 import numpy
 import pandas as pd
-import os
 import datetime
+import os
 
-src_domain = 'dom.csv'
-src_lowimpact = 'low.csv'
+src_report = 'AAA/RptExp_presidio_30_Days_-_RADIUS_Authentications_2019-08-29_18-59-00.000000096(1).csv'
 src_dc_auth_count = 0
 mab_ep = []
 d1x_ep = []
-output_csv = []
-formatted_domain_file = 'domain_formatted.csv'
-formatted_low_file = 'lowimpact_formatted.csv'
+csv_header = ''
+output_csv = []  # Array that creates the output file
 
 
 def initialize():
-    global src_lowimpact
-    global src_domain
-    global mab_ep
-    global d1x_ep
-    global formatted_domain_file
-    global formatted_low_file
+    global src_report
+    print('\n' * 10)
+    print('~' * 20 + 'Low Impact Report' + '~' * 10)
+    freport = filter_report(src_report)
+    m = get_low_impact(freport)
+    d = get_authenticated(freport)
 
-    dom = format_report(src_domain)
-    low = format_report(src_lowimpact)
+    l = create_auth_list(m)
+    a = create_auth_list(d)
 
-    domf = create_report_file(dom, formatted_domain_file)
-    lowf = create_report_file(low, formatted_low_file)
-    ###############################################
-    # UPDATE THIS TO TAKE THE FORMATTED SOURCE FILE
-    count_dot1x_auths(domf)
-    mab_ep = get_mab_auth(lowf)
-    d1x_ep = get_dot1x_auth(domf)
-    ###############################################
-    compare_auths(mab_ep, d1x_ep)
+    compare_auths(l, a)
     print_output_file(output_csv)
-
-
-def format_report(file):
-    df = pd.read_csv(file)
-    # Sort on MAC address
-    rep_sort = df.sort_values('\'CALLING_STATION_ID\'', ascending=False)
-    # Pull relevant fields
-    dom_report = rep_sort[[ '\'CALLING_STATION_ID\'', '\'LOCATION\'', '\'LOGGED AT\'',  '\'POLICY_SET_NAME\'', '\'ENDPOINTMATCHEDPROFILE\'', '\'IDENTITY_GROUP\'', '\'NAS_IP_ADDRESS\'', '\'NETWORK_DEVICE_NAME\'', '\'NAS_PORT_ID\'', '\'USER_NAME\'', '\'AUTHORIZATION_RULE\'']]
-    # Deduplicate MAC addresses
-    rep_final = dom_report.drop_duplicates(subset='\'CALLING_STATION_ID\'', keep='first')
-    return rep_final
-
-
-def create_report_file(report_object, fname):
-    remove_file(fname)
-    try:
-        report_object.to_csv(path_or_buf=fname)
-        return fname
-    except Exception:
-        print('Could not create file')
-
-
-def remove_file(fname):
-    try:
-        os.remove(fname)
-    except Exception:
-        pass
-
-
-def count_dot1x_auths(src_dc):
-    global src_dc_auth_count
-    with open(src_dc) as dot1xfile:
-        readfile = csv.reader(dot1xfile, delimiter=',')
-        next(dot1xfile)
-        for row in readfile:
-            src_dc_auth_count += 1
-    print('Rows in source file: ', src_dc_auth_count)
+    remove_file(m)
+    remove_file(d)
     return
 
 
-def get_mab_auth(src_li):
+def filter_report(file):
     try:
-        with open(src_li) as mabfile:
-            readfile = csv.reader(mabfile, delimiter=',')
+        df = pd.read_csv(file)
+        # Pull the relevant fields
+        filtered_report = df[['\'CALLING_STATION_ID\'',
+                                '\'LOCATION\'',
+                                '\'LOGGED AT\'',
+                                '\'POLICY_SET_NAME\'',
+                                '\'ENDPOINTMATCHEDPROFILE\'',
+                                '\'IDENTITY_GROUP\'',
+                                '\'NAS_IP_ADDRESS\'',
+                                '\'NETWORK_DEVICE_NAME\'',
+                                '\'NAS_PORT_ID\'',
+                                '\'USER_NAME\'',
+                                '\'AUTHORIZATION_RULE\'']]
+        header = ',Calling Station ID,' \
+                 'Location,Logged At,' \
+                 'Policy Set,' \
+                 'Endpoint Profile,' \
+                 'Identity Group,'\
+                 'NAS IP Address,'\
+                 'Network Device Name,'\
+                 'Port ID,'\
+                 'User Name,'\
+                 'Authorization Rule\n'
+        create_csv_header(header)
+        # print(filtered_report.loc[1)
+        return filtered_report
+    except KeyError:
+        filter_report_pe(file)
+        return
+    except FileNotFoundError:
+        print(FileNotFoundError)
+        return
+
+def filter_report_poe(file):
+    try:
+        df = pd.read_csv(file)
+        # Pull the relevant fields
+        filtered_report = df[['\'CALLING_STATION_ID\'',
+                              '\'LOCATION\'',
+                              '\'LOGGED AT\'',
+                              '\'POLICY_SET_NAME\'',
+                              '\'ENDPOINTMATCHEDPROFILE\'',
+                              '\'IDENTITY_GROUP\'',
+                              '\'NAS_IP_ADDRESS\'',
+                              '\'NETWORK_DEVICE_NAME\'',
+                              '\'NAS_PORT_ID\'',
+                              '\'USER_NAME\'',
+                              '\'AUTHORIZATION_RULE\'']]
+        header = ',Calling Station ID,' \
+                 'Location,Logged At,' \
+                 'Policy Set,' \
+                 'Endpoint Profile,' \
+                 'Identity Group,' \
+                 'NAS IP Address,' \
+                 'Network Device Name,' \
+                 'Port ID,' \
+                 'User Name,' \
+                 'Authorization Rule\n'
+        create_csv_header(header)
+        # print(filtered_report.loc[1)
+        return filtered_report
+    except KeyError:
+        print('Unable to read source CSV Keys')
+        print(KeyError)
+        return
+
+def get_low_impact(df):
+    li = ['\'Low_Impact_All_Sites\'', '\'Low_Impact_Call_Centers\'', '\'Low_Impact_Florida_Branches\'']
+    try:
+        # Isolate the low impact authentications
+        print('Finding Low Impact Authorizations ...')
+        li_df = df.loc[df['\'AUTHORIZATION_RULE\''].isin(li)]
+        fn = get_date() + 'LowImpact.csv'
+        # deduplicate the dataframe
+        li_df = li_df.drop_duplicates(subset='\'CALLING_STATION_ID\'', keep='first')
+        # Create formatted and deduped csv file
+        li_df.to_csv(fn)
+
+        return fn
+    except KeyError:
+        get_low_impact_pe(file)
+    except FileNotFoundError:
+        print('get_low_impact(): File Not Found')
+        quit()
+
+
+def get_authenticated(df):
+    global src_dc_auth_count
+    li = ['\'Low_Impact_All_Sites\'', '\'Low_Impact_Call_Centers\'', '\'Low_Impact_Florida_Branches\'']
+    try:
+        print('Finding Authenticated Devices ...')
+        a_df = df.loc[~df['\'AUTHORIZATION_RULE\''].isin(li)]
+        a_df = a_df.drop_duplicates(subset='\'CALLING_STATION_ID\'', keep='first')
+
+        # Set the count of authenticated endpoints
+        src_dc_auth_count = a_df.shape[0]
+
+        fn = get_date() + 'authenticated.csv'
+        # print(a_df.loc[1])
+        a_df.to_csv(fn)
+
+        return fn
+    except KeyError:
+        print('Authenticated df key error. Handle me')
+    except FileNotFoundError:
+        print('Source file not found')
+        quit()
+
+
+def create_auth_list(src_file):
+    try:
+        with open(src_file) as sfile:
+            readfile = csv.reader(sfile, delimiter=',')
             next(readfile)
             endpoints = []
             for row in readfile:
                 endpoints.append(row)
             return endpoints
     except:
-        print("Unknown error")
-
-
-def get_dot1x_auth(src_dx):
-    try:
-        with open(src_dx) as dot1xfile:
-            readfile = csv.reader(dot1xfile, delimiter=',')
-            next(readfile)
-            endpoints = []
-            for row in readfile:
-                endpoints.append(row)
-            return endpoints
-    except Exception:
-        print("Broke at get_dot1x_auth()")
+        print("Unknown Error - create_auth_list()")
 
 
 def compare_auths(mab, d1x):
@@ -122,44 +178,35 @@ def compare_auths(mab, d1x):
     global output_csv
     global src_dc_auth_count
     test = []
-    for m in mab:
-        for d in d1x:
-            if m[1] != d[1] and count >= src_dc_auth_count:
-                test.append(m)
-                output_csv.append(m)
-                count = 1
-                continue
-            elif m[1] == d[1] and count < src_dc_auth_count:
-                count = 1
-                continue
-            elif m[1] != d[1] and count < src_dc_auth_count:
-                count += 1
-        count = 1
-    return
+    try:
+        for m in mab:
+            for d in d1x:
+                if m[1] != d[1] and count >= src_dc_auth_count:
+                    test.append(m)
+                    output_csv.append(m)
+                    count = 1
+                    continue
+                elif m[1] == d[1] and count < src_dc_auth_count:
+                    count = 1
+                    continue
+                elif m[1] != d[1] and count < src_dc_auth_count:
+                    count += 1
+                # print(count)
+            count = 1
+        return
+    except FileNotFoundError:
+        print(mab + ' is not found')
+        raise
 
-
-def get_date():
-    now = datetime.datetime.now()
-    year = now.year
-    month = now.month
-    day = now.day
-
-    y = str(year)
-    m = str(month)
-    d = str(day)
-
-    d = y + '_'+ m +'_' + d + '_'
-
-    return d
 
 
 def print_output_file(le):
-    global formatted_domain_file
-    global formatted_low_file
+    global csv_header
 
     fname = get_date() + 'LowImpactReport.csv'
+    print('#' * 50)
     print('Creating Output File: ' + fname + '...')
-    headers = ',MAC Address,Location,LOGGED AT,Policy Set Endpoint Profile,Name,ID Group,Switch IP Address,Switch Name,Switch Port,Username,Authorization Rule\n'
+    headers = csv_header
 
     global output_csv
 
@@ -173,9 +220,36 @@ def print_output_file(le):
         f.write('\n')
         # print(i)
     f.close()
-    os.remove(formatted_low_file)
-    os.remove(formatted_domain_file)
+
+    print('\nCompleted Report!' + '\n' * 10)
     return
+
+def get_date():
+    now = datetime.datetime.now()
+    year = now.year
+    month = now.month
+    day = now.day
+
+    y = str(year)
+    m = str(month)
+    d = str(day)
+
+    d = y + '_' + m + '_' + d + '_'
+
+    return d
+
+
+def create_csv_header(header):
+    global csv_header
+    csv_header = header
+    return
+
+
+def remove_file(fname):
+    try:
+        os.remove(fname)
+    except Exception:
+        pass
 
 
 if __name__ == '__main__':
@@ -183,3 +257,4 @@ if __name__ == '__main__':
         initialize()
     except KeyboardInterrupt:
         print('You have cancelled the operation')
+        print('\n' * 10)
