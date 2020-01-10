@@ -18,12 +18,11 @@
 ###############################################################
 
 import csv
-import numpy
 import pandas as pd
 import datetime
 import os
 
-src_report = 'AAA/RptExp_presidio_30_Days_-_RADIUS_Authentications_2019-08-29_18-59-00.000000096(1).csv'
+src_report = 'Chase/RptExp_scom_RADIUS_Authentications_2019-12-11_11-23-00.000000018.csv'
 src_dc_auth_count = 0
 mab_ep = []
 d1x_ep = []
@@ -33,7 +32,7 @@ output_csv = []  # Array that creates the output file
 
 def initialize():
     global src_report
-    print('\n' * 10)
+    print('\n' * 2)
     print('~' * 20 + 'Low Impact Report' + '~' * 10)
     freport = filter_report(src_report)
     m = get_low_impact(freport)
@@ -78,47 +77,16 @@ def filter_report(file):
         # print(filtered_report.loc[1)
         return filtered_report
     except KeyError:
-        filter_report_pe(file)
+        print('File headers incorrect\n')
+        print(KeyError)
         return
     except FileNotFoundError:
         print(FileNotFoundError)
         return
 
-def filter_report_poe(file):
-    try:
-        df = pd.read_csv(file)
-        # Pull the relevant fields
-        filtered_report = df[['\'CALLING_STATION_ID\'',
-                              '\'LOCATION\'',
-                              '\'LOGGED AT\'',
-                              '\'POLICY_SET_NAME\'',
-                              '\'ENDPOINTMATCHEDPROFILE\'',
-                              '\'IDENTITY_GROUP\'',
-                              '\'NAS_IP_ADDRESS\'',
-                              '\'NETWORK_DEVICE_NAME\'',
-                              '\'NAS_PORT_ID\'',
-                              '\'USER_NAME\'',
-                              '\'AUTHORIZATION_RULE\'']]
-        header = ',Calling Station ID,' \
-                 'Location,Logged At,' \
-                 'Policy Set,' \
-                 'Endpoint Profile,' \
-                 'Identity Group,' \
-                 'NAS IP Address,' \
-                 'Network Device Name,' \
-                 'Port ID,' \
-                 'User Name,' \
-                 'Authorization Rule\n'
-        create_csv_header(header)
-        # print(filtered_report.loc[1)
-        return filtered_report
-    except KeyError:
-        print('Unable to read source CSV Keys')
-        print(KeyError)
-        return
 
 def get_low_impact(df):
-    li = ['\'Low_Impact_All_Sites\'', '\'Low_Impact_Call_Centers\'', '\'Low_Impact_Florida_Branches\'']
+    li = ['\'MONITOR_MODE\'', '\'Low_Impact_All_Sites\'']
     try:
         # Isolate the low impact authentications
         print('Finding Low Impact Authorizations ...')
@@ -129,9 +97,13 @@ def get_low_impact(df):
         # Create formatted and deduped csv file
         li_df.to_csv(fn)
 
+        # Testing - print number of hits
+        print('Low Impact count should match kill count for a perfect match')
+        print(len(li_df.index))
         return fn
     except KeyError:
-        get_low_impact_pe(file)
+        return
+        # get_low_impact_pe(file)
     except FileNotFoundError:
         print('get_low_impact(): File Not Found')
         quit()
@@ -139,14 +111,14 @@ def get_low_impact(df):
 
 def get_authenticated(df):
     global src_dc_auth_count
-    li = ['\'Low_Impact_All_Sites\'', '\'Low_Impact_Call_Centers\'', '\'Low_Impact_Florida_Branches\'']
+    li = ['\'MONITOR_MODE\'']
     try:
         print('Finding Authenticated Devices ...')
         a_df = df.loc[~df['\'AUTHORIZATION_RULE\''].isin(li)]
         a_df = a_df.drop_duplicates(subset='\'CALLING_STATION_ID\'', keep='first')
 
         # Set the count of authenticated endpoints
-        src_dc_auth_count = a_df.shape[0]
+        src_dc_auth_count = len(a_df.index)
 
         fn = get_date() + 'authenticated.csv'
         # print(a_df.loc[1])
@@ -177,22 +149,31 @@ def compare_auths(mab, d1x):
     count = 1
     global output_csv
     global src_dc_auth_count
-    test = []
+    killcount = 0
     try:
         for m in mab:
             for d in d1x:
+                # upper constraint.  m matched no d
+                # and the end of the file was reached, so append to list
+                # the count is reset to 1 and a new m is compared
                 if m[1] != d[1] and count >= src_dc_auth_count:
-                    test.append(m)
                     output_csv.append(m)
+                    # print(m)
                     count = 1
                     continue
+                # we found a match.  reset count to 1 to compare
+                # a new m and continue
                 elif m[1] == d[1] and count < src_dc_auth_count:
                     count = 1
+                    killcount += 1
                     continue
+                # m does not match d, keep looking
                 elif m[1] != d[1] and count < src_dc_auth_count:
                     count += 1
-                # print(count)
+            #    print(count)
             count = 1
+        kc = str(killcount)
+        print('Kill count = ' + kc)
         return
     except FileNotFoundError:
         print(mab + ' is not found')
@@ -216,13 +197,18 @@ def print_output_file(le):
     f =open(fname, 'a+')
     for i in output_csv:
         str_i = str(i)
+        str_i = str_i[1:-1]
+        str_i = str_i.replace('\'', '')
+        str_i = str_i.replace('\"', '')
+        print(str_i)
         f.write(str_i)
         f.write('\n')
         # print(i)
     f.close()
 
-    print('\nCompleted Report!' + '\n' * 10)
+    print('\nCompleted Report!' + '\n' * 2)
     return
+
 
 def get_date():
     now = datetime.datetime.now()
