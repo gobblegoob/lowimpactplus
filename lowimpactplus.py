@@ -22,7 +22,7 @@ import pandas as pd
 import datetime
 import os
 
-src_report = 'Chase/RptExp_scom_RADIUS_Authentications_2019-12-11_11-23-00.000000018.csv'
+src_report = 'SOURCE_FILE.csv'
 src_dc_auth_count = 0
 mab_ep = []
 d1x_ep = []
@@ -33,7 +33,7 @@ output_csv = []  # Array that creates the output file
 def initialize():
     global src_report
     print('\n' * 2)
-    print('~' * 20 + 'Low Impact Report' + '~' * 10)
+    print('~' * 20 + 'Low Impact Report' + '~' * 20)
     freport = filter_report(src_report)
     m = get_low_impact(freport)
     d = get_authenticated(freport)
@@ -78,15 +78,20 @@ def filter_report(file):
         return filtered_report
     except KeyError:
         print('File headers incorrect\n')
-        print(KeyError)
+        quit()
         return
     except FileNotFoundError:
-        print(FileNotFoundError)
+        print('Source file not found: ' + src_report)
+        quit()
         return
 
 
 def get_low_impact(df):
-    li = ['\'MONITOR_MODE\'', '\'Low_Impact_All_Sites\'']
+    # Update this Array with the Authorization Policies you want to check
+    # It must be a full match!  Add or remove as needed
+    li = ['\'Monitor-ByLocation\'',
+          '\'MONITOR_MODE\''
+          ]
     try:
         # Isolate the low impact authentications
         print('Finding Low Impact Authorizations ...')
@@ -98,7 +103,7 @@ def get_low_impact(df):
         li_df.to_csv(fn)
 
         # Testing - print number of hits
-        print('Low Impact count should match kill count for a perfect match')
+        print('Low Impact count should match kill count to indicate no unsuccessful authentications found.')
         print(len(li_df.index))
         return fn
     except KeyError:
@@ -127,6 +132,7 @@ def get_authenticated(df):
         return fn
     except KeyError:
         print('Authenticated df key error. Handle me')
+        quit()
     except FileNotFoundError:
         print('Source file not found')
         quit()
@@ -143,6 +149,7 @@ def create_auth_list(src_file):
             return endpoints
     except:
         print("Unknown Error - create_auth_list()")
+        quit()
 
 
 def compare_auths(mab, d1x):
@@ -177,7 +184,7 @@ def compare_auths(mab, d1x):
         return
     except FileNotFoundError:
         print(mab + ' is not found')
-        raise
+        quit()
 
 
 
