@@ -7,7 +7,8 @@
 #   can be remediated.
 #
 #   You can customize your low impact policies you want to search for
-#   by modifying the li[] list in get_low_impact()
+#   by modifying global list li_policy_list with the full names
+#   of your Low Impact policies.
 #
 #   Takes raw output from the RADIUS Authentications reports
 #   including all authentications.  No filters.
@@ -22,13 +23,18 @@ import pandas as pd
 import datetime
 import os
 
-src_report = 'SOURCE_FILE.csv'
-src_dc_auth_count = 0
+src_report = 'SOURCE_RADIUS_REPORT.csv'
+src_dc_auth_count = 0  # Count of authenticated endpoints.
 mab_ep = []
 d1x_ep = []
 csv_header = ''
 output_csv = []  # Array that creates the output file
 
+# Low impact or other policies you want to monitor
+li_policy_list = ['\'Low_Impact_All_Sites\'',
+                  '\'Default\'',
+                  '\'Location_Specific_Low_Impact\''
+                 ]
 
 def initialize():
     global src_report
@@ -49,6 +55,13 @@ def initialize():
 
 
 def filter_report(file):
+    """
+    Filters out the necessary fields of the low impact report and exports it
+    to a Pandas dataframe
+
+    :param file: source file - 30 day radius authentication report .csv
+    :return: filtered_report - Pandas DataFrame
+    """
     try:
         df = pd.read_csv(file)
         # Pull the relevant fields
@@ -87,11 +100,15 @@ def filter_report(file):
 
 
 def get_low_impact(df):
-    # Update this Array with the Authorization Policies you want to check
-    # It must be a full match!  Add or remove as needed
-    li = ['\'Monitor-ByLocation\'',
-          '\'MONITOR_MODE\''
-          ]
+    """
+    Update this Array with the Authorization Policies you want to check
+    It must be a full match!  Add or remove as needed
+
+    :param df: pandas dataframe, returned from filtered_report()
+    :return: fn - Output filename.
+    """
+    global li_policy_list
+    li = li_policy_list
     try:
         # Isolate the low impact authentications
         print('Finding Low Impact Authorizations ...')
@@ -116,7 +133,8 @@ def get_low_impact(df):
 
 def get_authenticated(df):
     global src_dc_auth_count
-    li = ['\'MONITOR_MODE\'']
+    global li_policy_list
+    li = li_policy_list
     try:
         print('Finding Authenticated Devices ...')
         a_df = df.loc[~df['\'AUTHORIZATION_RULE\''].isin(li)]
@@ -153,6 +171,12 @@ def create_auth_list(src_file):
 
 
 def compare_auths(mab, d1x):
+    """
+    Compares Low Impact authentications
+    :param mab: temp file that tracks low impact authentications
+    :param d1x: temp file that tracks endpoints that hit intended authorization policies
+    :return: Nothing
+    """
     count = 1
     global output_csv
     global src_dc_auth_count
@@ -189,6 +213,12 @@ def compare_auths(mab, d1x):
 
 
 def print_output_file(le):
+    """
+    Creates the final Low Impact Report .csv file
+
+    :param le: List that contains all endpoints that need remediation.
+    :return: Nothing
+    """
     global csv_header
 
     fname = get_date() + 'LowImpactReport.csv'

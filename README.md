@@ -9,9 +9,8 @@ You will need to modify the following:
 1. Global Variable: src_report
   This defines your source csv you wish to parse.
   
-2. li[] in get_low_impact()
-  This is a list of low impact policies you wish to search on. Just enter values that match your low impact/monitor mode policies.  This is a list in case you have multiple low impact policies you wish to watch.
-  
+2. Global Variable: li_policy_list: 
+  This is a list of all Low Impact/Monitor Mode policies that you are watching. 
 
 DEPENDENCIES:
   Pandas
