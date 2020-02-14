@@ -23,7 +23,7 @@ import pandas as pd
 import datetime
 import os
 
-src_report = 'SOURCE_FILE.csv'
+src_report = 'LongReportAAA.csv'
 src_dc_auth_count = 0  # Count of authenticated endpoints.
 mab_ep = []
 d1x_ep = []
@@ -191,7 +191,7 @@ def get_low_impact(df):
 
 def get_low_impact_short_report(df):
     """
-    Short report. Uses short report headers
+    Short report. Uses short report headers.
 
     :param df: pandas dataframe, returned from filtered_report()
     :return: fn - Output filename.
@@ -221,6 +221,12 @@ def get_low_impact_short_report(df):
 
 
 def get_authenticated(df):
+    """
+    Get Authentications to be compared
+
+    :param df: Pandas Dataframe
+    :return: Filename
+    """
     global src_dc_auth_count
     global li_policy_list
     li = li_policy_list
@@ -248,6 +254,12 @@ def get_authenticated(df):
 
 
 def get_authenticated_short_report(df):
+    """
+    Uses Short Report Headers
+
+    :param df: Pandas Dataframe
+    :return: fn - Filename for csv of authentications
+    """
     global src_dc_auth_count
     global li_policy_list
     li = li_policy_list
