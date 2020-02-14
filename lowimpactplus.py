@@ -23,17 +23,30 @@ import pandas as pd
 import datetime
 import os
 
-src_report = 'SOURCE_RADIUS_REPORT.csv'
+src_report = 'SOURCE_FILE.csv'
 src_dc_auth_count = 0  # Count of authenticated endpoints.
 mab_ep = []
 d1x_ep = []
 csv_header = ''
 output_csv = []  # Array that creates the output file
 
-# Low impact or other policies you want to monitor
+# li_policy_list is a list of your low impact policies you wish to search against
+# Devices hitting these policies likely need to be remediated
+# NOTE! 30 day raw reports require you escape  a single apostrophe for while you search
+#   IE: '\'MONITOR_MODE-Main Office\''
+# Shortened reports require no apostrophes
+# Delete the following values and add your own
 li_policy_list = ['\'Low_Impact_All_Sites\'',
                   '\'Default\'',
-                  '\'Location_Specific_Low_Impact\''
+                  '\'Location_Specific_Low_Impact\'',
+                  '\'MONITOR_MODE\'',
+                  '\'MONITOR - By Location\'',
+                  'Low_Impact_All_Sites',
+                  'MONITOR_MODE',
+                  'MONITOR - By Location',
+                  'Default',
+                  'Low_Impact_All_Sites',
+                  'Location_Specific_Low_Impact'
                  ]
 
 def initialize():
@@ -87,10 +100,11 @@ def filter_report(file):
                  'User Name,'\
                  'Authorization Rule\n'
         create_csv_header(header)
-        # print(filtered_report.loc[1)
         return filtered_report
     except KeyError:
-        print('File headers incorrect\n')
+        sr_filtered_report = filter_short_report(file)
+        return sr_filtered_report
+        #print('File headers incorrect\n')
         quit()
         return
     except FileNotFoundError:
@@ -98,6 +112,48 @@ def filter_report(file):
         quit()
         return
 
+
+def filter_short_report(file):
+    """
+    Filtered non-30 day reports export with different headers.  This function will allow the application
+    to ingest and analyze these types of reports.
+
+    :param file: Source csv
+    :return: filtered_report Pandas Dataframe
+    """
+    try:
+        df = pd.read_csv(file)
+        # Pull the relevant fields
+        filtered_report = df[['Endpoint ID',
+                                'Location',
+                                'Logged At',
+                                'Endpoint Profile',
+                                'Identity',
+                                'Network Device IP',
+                                'Network Device',
+                                'Device Port',
+                                'Identity',
+                                'Authorization Rule']]
+        header = ',Calling Station ID,' \
+                 'Location,Logged At,' \
+                 'Endpoint Profile,' \
+                 'Identity Group,'\
+                 'NAS IP Address,'\
+                 'Network Device Name,'\
+                 'Port ID,'\
+                 'User Name,'\
+                 'Authorization Rule\n'
+        create_csv_header(header)
+        return filtered_report
+    except KeyError:
+        print('File headers incorrect\n'
+              'Please fix or obtain a new report')
+        quit()
+        return
+    except FileNotFoundError:
+        print('Source file not found: ' + src_report)
+        quit()
+        return
 
 def get_low_impact(df):
     """
@@ -124,8 +180,41 @@ def get_low_impact(df):
         print(len(li_df.index))
         return fn
     except KeyError:
-        return
-        # get_low_impact_pe(file)
+        print('Key error: get_low_impact()')
+        fn_sr = get_low_impact_short_report(df)
+        return fn_sr
+        quit()
+    except FileNotFoundError:
+        print('get_low_impact(): File Not Found')
+        quit()
+
+
+def get_low_impact_short_report(df):
+    """
+    Short report. Uses short report headers
+
+    :param df: pandas dataframe, returned from filtered_report()
+    :return: fn - Output filename.
+    """
+    global li_policy_list
+    li = li_policy_list
+    try:
+        # Isolate the low impact authentications
+        print('Finding Low Impact Authorizations ...')
+        li_df = df.loc[df['Authorization Rule'].isin(li)]
+        fn = get_date() + 'LowImpact.csv'
+        # deduplicate the dataframe
+        li_df = li_df.drop_duplicates(subset='Endpoint ID', keep='first')
+        # Create formatted and deduped csv file
+        li_df.to_csv(fn)
+
+        # Testing - print number of hits
+        print('Low Impact count should match kill count to indicate no unsuccessful authentications found.')
+        print(len(li_df.index))
+        return fn
+    except KeyError:
+        print('Key error: get_low_impact_short_report()')
+        quit()
     except FileNotFoundError:
         print('get_low_impact(): File Not Found')
         quit()
@@ -139,6 +228,33 @@ def get_authenticated(df):
         print('Finding Authenticated Devices ...')
         a_df = df.loc[~df['\'AUTHORIZATION_RULE\''].isin(li)]
         a_df = a_df.drop_duplicates(subset='\'CALLING_STATION_ID\'', keep='first')
+
+        # Set the count of authenticated endpoints
+        src_dc_auth_count = len(a_df.index)
+
+        fn = get_date() + 'authenticated.csv'
+        # print(a_df.loc[1])
+        a_df.to_csv(fn)
+
+        return fn
+    except KeyError:
+        print('Authenticated df key error. Handle me')
+        fn = get_authenticated_short_report(df)
+        return fn
+        quit()
+    except FileNotFoundError:
+        print('Source file not found')
+        quit()
+
+
+def get_authenticated_short_report(df):
+    global src_dc_auth_count
+    global li_policy_list
+    li = li_policy_list
+    try:
+        print('Finding Authenticated Devices ...')
+        a_df = df.loc[~df['Authorization Rule'].isin(li)]
+        a_df = a_df.drop_duplicates(subset='Endpoint ID', keep='first')
 
         # Set the count of authenticated endpoints
         src_dc_auth_count = len(a_df.index)
@@ -237,7 +353,7 @@ def print_output_file(le):
         str_i = str_i[1:-1]
         str_i = str_i.replace('\'', '')
         str_i = str_i.replace('\"', '')
-        print(str_i)
+        # print(str_i)
         f.write(str_i)
         f.write('\n')
         # print(i)
