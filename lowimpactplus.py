@@ -244,7 +244,6 @@ def get_authenticated(df):
 
         return fn
     except KeyError:
-        print('Authenticated df key error. Handle me')
         fn = get_authenticated_short_report(df)
         return fn
         quit()
