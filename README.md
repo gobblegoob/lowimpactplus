@@ -146,9 +146,9 @@ This is an example of how to list things you need to use the software and how to
 In brief: 
 1. Modify the script variables to match your targeted policies.
     - Edit the src_report variable to match the RADIUS report csv file you wish to analyze
-<img src="/images/srcreport.png" alt="src_report">
+<img src="/images/srcreport.PNG" alt="src_report">
     - This is done by editing the li_policy_list list variable to reflect your designated low impact policies.
-<img src="/images/lipolicylist.png" alt="li_policy_list">
+<img src="/images/lipolicylist.PNG" alt="li_policy_list">
 2. Export a 30 Day RADIUS Authentication report as a csv file to your selected repository. This will give you the most complete report
 3. Save the report csv file to the lowimpact plus directory 
 4. Execute the script
