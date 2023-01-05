@@ -165,7 +165,7 @@ In brief:
 
 - [ ] Add arguments to set input file
 - [ ] Add gui to select input file
-
+- [ ] Utilize OpenPyxl to change output to formatted xml spreadsheet for cleaner deliverable
 
 See the [open issues](https://github.com/gobblegoob/lowimpactplus/issues) for a full list of proposed features (and known issues).
 
