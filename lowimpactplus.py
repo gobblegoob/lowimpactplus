@@ -23,7 +23,7 @@ import pandas as pd
 import datetime
 import os
 
-src_report = 'LongReportAAA.csv'
+src_report = '7dayreportcms.csv'
 src_dc_auth_count = 0  # Count of authenticated endpoints.
 mab_ep = []
 d1x_ep = []
@@ -36,17 +36,8 @@ output_csv = []  # Array that creates the output file
 #   IE: '\'MONITOR_MODE-Main Office\''
 # Shortened reports require no apostrophes
 # Delete the following values and add your own
-li_policy_list = ['\'Low_Impact_All_Sites\'',
-                  '\'Default\'',
-                  '\'Location_Specific_Low_Impact\'',
-                  '\'MONITOR_MODE\'',
-                  '\'MONITOR - By Location\'',
-                  'Low_Impact_All_Sites',
-                  'MONITOR_MODE',
-                  'MONITOR - By Location',
-                  'Default',
-                  'Low_Impact_All_Sites',
-                  'Location_Specific_Low_Impact'
+li_policy_list = [
+                  'Low Impact'
                  ]
 
 def initialize():
@@ -78,19 +69,18 @@ def filter_report(file):
     try:
         df = pd.read_csv(file)
         # Pull the relevant fields
-        filtered_report = df[['\'CALLING_STATION_ID\'',
-                                '\'LOCATION\'',
-                                '\'LOGGED AT\'',
-                                '\'POLICY_SET_NAME\'',
-                                '\'ENDPOINTMATCHEDPROFILE\'',
-                                '\'IDENTITY_GROUP\'',
-                                '\'NAS_IP_ADDRESS\'',
-                                '\'NETWORK_DEVICE_NAME\'',
-                                '\'NAS_PORT_ID\'',
-                                '\'USER_NAME\'',
-                                '\'AUTHORIZATION_RULE\'']]
+        filtered_report = df[['CALLING_STATION_ID',
+                                'LOCATION',
+                                'POLICY_SET_NAME',
+                                'ENDPOINTMATCHEDPROFILE',
+                                'IDENTITY_GROUP',
+                                'NAS_IP_ADDRESS',
+                                'NETWORK_DEVICE_NAME',
+                                'NAS_PORT_ID',
+                                'USER_NAME',
+                                'AUTHORIZATION_RULE']]
         header = ',Calling Station ID,' \
-                 'Location,Logged At,' \
+                 'Location,' \
                  'Policy Set,' \
                  'Endpoint Profile,' \
                  'Identity Group,'\
@@ -168,10 +158,10 @@ def get_low_impact(df):
     try:
         # Isolate the low impact authentications
         print('Finding Low Impact Authorizations ...')
-        li_df = df.loc[df['\'AUTHORIZATION_RULE\''].isin(li)]
+        li_df = df.loc[df['AUTHORIZATION_RULE'].isin(li)]
         fn = get_date() + 'LowImpact.csv'
         # deduplicate the dataframe
-        li_df = li_df.drop_duplicates(subset='\'CALLING_STATION_ID\'', keep='first')
+        li_df = li_df.drop_duplicates(subset='CALLING_STATION_ID', keep='first')
         # Create formatted and deduped csv file
         li_df.to_csv(fn)
 
@@ -232,8 +222,8 @@ def get_authenticated(df):
     li = li_policy_list
     try:
         print('Finding Authenticated Devices ...')
-        a_df = df.loc[~df['\'AUTHORIZATION_RULE\''].isin(li)]
-        a_df = a_df.drop_duplicates(subset='\'CALLING_STATION_ID\'', keep='first')
+        a_df = df.loc[~df['AUTHORIZATION_RULE'].isin(li)]
+        a_df = a_df.drop_duplicates(subset='CALLING_STATION_ID', keep='first')
 
         # Set the count of authenticated endpoints
         src_dc_auth_count = len(a_df.index)
