@@ -22,6 +22,7 @@ import csv
 import pandas as pd
 import datetime
 import os
+import openpyxl
 
 src_report = '7dayreportcms.csv'
 src_dc_auth_count = 0  # Count of authenticated endpoints.
@@ -32,9 +33,7 @@ output_csv = []  # Array that creates the output file
 
 # li_policy_list is a list of your low impact policies you wish to search against
 # Devices hitting these policies likely need to be remediated
-# NOTE! 30 day raw reports require you escape  a single apostrophe for while you search
-#   IE: '\'MONITOR_MODE-Main Office\''
-# Shortened reports require no apostrophes
+# Each li_policy_list value should match an AUTHORIZATION_RULE in the RADIUS report
 # Delete the following values and add your own
 li_policy_list = [
                   'Low Impact'
