@@ -114,6 +114,7 @@ This script ingests a .csv RADIUS Authentications report from Cisco ISE.  It ded
 
 Dependencies:
  - pandas => 1.3.4
+ - openpyxl==3.1.2
 
 <!--
 ### Prerequisites
