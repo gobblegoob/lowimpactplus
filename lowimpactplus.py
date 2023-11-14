@@ -51,7 +51,15 @@ def initialize():
     a = create_auth_list(d)
 
     compare_auths(l, a)
-    print_output_file(output_csv)
+    #report_csv = print_output_file(output_csv)
+
+    # Create completed report dataframe
+    report_df = create_report_df(output_csv)
+
+    # Convert dataframe to formatted XLSX
+    output_excel_report(report_df)
+
+    # cleanup
     remove_file(m)
     remove_file(d)
     return
@@ -327,6 +335,60 @@ def compare_auths(mab, d1x):
         quit()
 
 
+def create_report_df(report_list):
+    '''
+    Take the output_csv report and create a pandas dataframe.
+    This is a dataframe of the completed report with added columns for 
+    endpoint information and remediation plans
+    :arg: list of completed report
+    :return: Pandas Dataframe containing completed report with added columns
+    '''
+    col_list = [
+        'num',
+        'Calling Station ID',
+        'Location',
+        'Policy Set',
+        'Endpoint Profile',
+        'Identity Group',
+        'NAS IP Address',
+        'Network Device Name',
+        'Port ID',
+        'User Name',
+        'Authorization Rule'
+    ]
+    report_df = pd.DataFrame(report_list, columns=col_list)
+    list = report_list[0]
+    report_df.loc[len(report_df)] = list
+    report_df = report_df.drop('num', axis=1)
+
+    dummy_value = []
+    i= 0
+    while i < report_list.__len__():
+        i+=1
+        dummy_value.append('')
+    
+    dummy_value.append('')
+
+    # Insert the new columns
+    #Empty columm for Endpoint Type
+    report_df.insert(loc=2, column='Endpoint Type', value=dummy_value)
+    # Empty column for Authentication Plan
+    report_df.insert(loc=3, column='Authentication Plan', value=dummy_value)
+    # Empty column for Remeidation status
+    report_df.insert(loc=4, column='Remediation Status', value=dummy_value)
+    return report_df
+
+
+def output_excel_report(report_df):
+    '''
+    Create a nice low impact report
+    :arg: Pandas dataframe
+    :return:
+    '''
+    fname = get_date() + 'LowImpactReport.xlsx'
+    report_df.to_excel(fname)
+    return
+
 
 def print_output_file(le):
     """
@@ -360,7 +422,7 @@ def print_output_file(le):
     f.close()
 
     print('\nCompleted Report!' + '\n' * 2)
-    return
+    return fname
 
 
 def get_date():
