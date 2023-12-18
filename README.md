@@ -36,7 +36,8 @@
 <h3 align="center">lowimpactplus</h3>
 
   <p align="center">
-    Analyze RADIUS reports for a concise list of wired endpoints hitting specified catch-all policies
+    Analyze RADIUS reports for a concise list of wired endpoints hitting specified catch-all policies.<br/>
+    For ISE 3.x versions, use the 3.x branch!
     <br />
     <!--<a href="https://github.com/gobblegoob/lowimpactplus"><strong>Explore the docs »</strong></a>
     <br />
